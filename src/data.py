@@ -1,25 +1,37 @@
 import pandas as pd
 import streamlit as st
 import os
+import glob
 
 LEVEL_3_EXCEL = "Level_3.xlsx"
 LEVEL_3_PARQUET = "Level_3.parquet"
+DATA_CHUNKS_DIR = "data_chunks"
 LOOKUP_FILE = "lookups.xlsx"
 
 @st.cache_data
 def load_raw_data():
     """
-    Loads the Level_3 dataset and Lookups.
+    Loads the dataset (checking chunks first, then parquet, then excel) and Lookups.
     Returns:
         df_data: The main data (wide format).
         df_lookup: The lookup table (small_area -> local_authority).
     """
     # 1. Load Main Data
+    df = pd.DataFrame()
     try:
-        if os.path.exists(LEVEL_3_PARQUET):
+        # Check for Chunks (Priority for Cloud Deployment)
+        chunk_files = glob.glob(f"{DATA_CHUNKS_DIR}/level_3_part_*.parquet")
+        if chunk_files:
+            dfs = [pd.read_parquet(f) for f in chunk_files]
+            df = pd.concat(dfs, ignore_index=True)
+            # print("Loaded from Parquet Chunks")
+        elif os.path.exists(LEVEL_3_PARQUET):
             df = pd.read_parquet(LEVEL_3_PARQUET)
+            # print("Loaded from Single Parquet")
         else:
             df = pd.read_excel(LEVEL_3_EXCEL)
+            # print("Loaded from Excel")
+            
     except Exception as e:
         st.error(f"Error loading main data: {e}")
         return pd.DataFrame(), pd.DataFrame()

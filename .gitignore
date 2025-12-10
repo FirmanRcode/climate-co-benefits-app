@@ -30,12 +30,17 @@ ENV/
 .streamlit/
 !.streamlit/config.toml
 
-# Project Data (EXCLUDED due to GitHub 100MB limit)
+# Project Data
+# Level_3.parquet is 157MB -> Exclude unless we use Git LFS
 Level_3.xlsx
 Level_3.parquet
+
+# Shapefiles (Exclude RAW files)
 small_areas_british_grid.*
-lookups.xlsx
-small_areas.geojson
+
+# ALLOW these small(er) files
+!lookups.xlsx
+!small_areas.geojson
 
 # Logs
 *.log
