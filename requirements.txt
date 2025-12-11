@@ -6,3 +6,4 @@ pyarrow
 geopandas
 matplotlib
 shapely
+duckdb

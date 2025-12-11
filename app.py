@@ -1,6 +1,13 @@
 import streamlit as st
 import pandas as pd
-from src.data import load_raw_data, get_area_options, get_unique_benefits, process_area_data
+from src.data import (
+    load_lookups, 
+    get_area_options, 
+    get_area_data, 
+    process_area_data_from_df,
+    get_unique_benefits,
+    get_top_areas_data
+)
 from src.visualizations import (
     plot_projected_benefits_timeline, 
     plot_benefit_breakdown_2050,
@@ -52,31 +59,24 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- DATA LOADING ---
-@st.cache_data
-def get_data_bundle():
-    return load_raw_data()
-
-with st.spinner("Loading Co-Benefits Data..."):
-    df_raw, df_lookup = get_data_bundle()
-
-if df_raw.empty:
-    st.error("Failed to load data. Please check 'Level_3.xlsx'.")
-    st.stop()
-    
-# Load Shapefile in background
-with st.spinner("Loading Map Data..."):
-    gdf_uk = load_shapefile()
+# --- DATA LOADING (LAZY) ---
+with st.spinner("Initializing..."):
+    df_lookup = load_lookups()
 
 # --- SIDEBAR ---
-st.sidebar.image("https://thedatalab.com/wp-content/uploads/2023/06/The-Data-Lab-Logo-White.png", width=200) # Placeholder or real logo
+st.sidebar.image("https://thedatalab.com/wp-content/uploads/2023/06/The-Data-Lab-Logo-White.png", width=200)
 st.sidebar.title("🌍 Settings")
 
-# Get Options (Name -> Code)
-area_options_map = get_area_options(df_lookup, df_raw)
+# Get Options
+area_options_map = get_area_options(df_lookup)
+
+if not area_options_map:
+    st.error("No area options found. Check 'lookups.xlsx'.")
+    st.stop()
+
 area_display_names = list(area_options_map.keys())
 
-# Find index of Glasgow or Default
+# Default Selection
 default_index = 0
 for idx, name in enumerate(area_display_names):
     if "Glasgow" in name:
@@ -98,16 +98,15 @@ By investing in climate initiatives, you aren't just saving the planet—you are
 
 # --- MAIN PAGE ---
 
-# Extract pure name for display
 display_pure_name = selected_display_name.split('(')[0].strip()
 
-# Header
 st.markdown(f'<div class="main-header">Analysis for: {display_pure_name}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="sub-header">The Hidden Value of Climate Action (2025-2050)</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
-# PROCESS DATA FOR SELECTED AREA (On-the-fly)
-area_df_melted = process_area_data(df_raw, selected_area_code)
+# LOAD SPECIFIC AREA DATA (DuckDB)
+area_df_raw = get_area_data(selected_area_code)
+area_df_melted = process_area_data_from_df(area_df_raw)
 
 if area_df_melted.empty:
     st.warning(f"No data found for area code: {selected_area_code}")
@@ -117,9 +116,7 @@ if area_df_melted.empty:
 data_2050 = area_df_melted[area_df_melted['Year'] == 2050]
 total_benefit_2050 = data_2050['Benefit_Value'].sum()
 
-# Sort by value for Top Benefit
 sorted_benefits = data_2050.sort_values('Benefit_Value', ascending=False)
-
 if not sorted_benefits.empty:
     top_benefit_row = sorted_benefits.iloc[0]
     top_benefit_type = top_benefit_row['co-benefit_type']
@@ -141,7 +138,6 @@ def format_currency(val):
     elif val == 0:
         return "£0"
     else:
-        # For small numbers like 0.07
         return f"£{val:,.4f}"
 
 with col1:
@@ -191,21 +187,40 @@ with tab1:
     # Row 2: Comparison
     st.subheader("🏆 Contextual Comparison")
     st.write(f"How does {display_pure_name} compare to other top regions?")
-
-    comparison_type = st.selectbox("Compare by Benefit Type", ["Total"] + get_unique_benefits(df_raw))
+    
+    # Get Unique Benefits for dropdown
+    benefits_list = get_unique_benefits() # Uses DuckDB DISTINCT
+    comparison_type = st.selectbox("Compare by Benefit Type", ["Total"] + benefits_list)
 
     if comparison_type == "Total":
-        fig3 = plot_top_areas_comparison(df_raw, None)
+        df_top10 = get_top_areas_data(None, 2050)
     else:
-        fig3 = plot_top_areas_comparison(df_raw, comparison_type)
-
+        df_top10 = get_top_areas_data(comparison_type, 2050)
+        
+    # NOTE: plot_top_areas_comparison expects df_wide format. 
+    # But now we are passing a pre-aggregated DF with columns [small_area, Benefit_Value].
+    # We need to adapt the function calls or the function itself.
+    # Actually, simpler to just plot directly here or make a new simple plotter.
+    # Let's use internal simple plotting for robustness
+    import plotly.express as px
+    fig3 = px.bar(
+        df_top10.sort_values('Benefit_Value', ascending=True),
+        y='small_area',
+        x='Benefit_Value',
+        orientation='h',
+        title=f"Top 10 Areas ({'Total' if comparison_type=='Total' else comparison_type}) in 2050",
+        template='plotly_dark',
+        color='Benefit_Value',
+        color_continuous_scale='Viridis'
+    )
+    fig3.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter"))
+    
     st.plotly_chart(fig3, use_container_width=True)
 
 with tab2:
     st.header("⏳ Evolution of Benefits (Animation)")
     st.write("Press 'Play' to see how the benefits landscape changes from 2025 to 2050.")
     
-    # Toggle between Bar and Bubble
     anim_type = st.radio("Select Animation Style:", ["Bar Race (Ranking)", "Motion Bubble (Value vs Growth)"], horizontal=True)
     
     if anim_type == "Bar Race (Ranking)":
@@ -223,14 +238,46 @@ with tab2:
 with tab3:
     st.header("🗺️ Geographic Distribution")
     
+    # Load Shapefile (GeoJSON) - Cached
+    with st.spinner("Loading Map..."):
+        gdf_uk = load_shapefile()
+
     if not gdf_uk.empty:
         col_map_1, col_map_2 = st.columns([3, 1])
         with col_map_1:
-            map_benefit = st.selectbox("Select Benefit to Map (2050):", ["Total"] + get_unique_benefits(df_raw))
-            fig_map = plot_choropleth_map(gdf_uk, df_raw, map_benefit)
+            # Map needs specific aggregation across ALL areas.
+            # This is currently heavy with DuckDB (aggregating all rows).
+            # We can use a simplified query "SELECT small_area, SUM(\"2050\") ..."
+            # But wait, Map needs DataFrame to merge.
+            # Let's query Aggregated Data for 2050.
+            
+            map_benefit = st.selectbox("Select Benefit to Map (2050):", ["Total"] + benefits_list)
+            
+            # Fetch Map Data on fly
+            if map_benefit == "Total":
+                query_map = "SELECT small_area, SUM(\"2050\") as Benefit_Value FROM 'data_chunks/level_3_part_*.parquet' GROUP BY small_area"
+            else:
+                 query_map = f"SELECT small_area, \"2050\" as Benefit_Value FROM 'data_chunks/level_3_part_*.parquet' WHERE \"co-benefit_type\" = '{map_benefit}'"
+            
+            import duckdb
+            df_map_data = duckdb.execute(query_map).fetchdf()
+            
+            # Use the existing plotter but we need to trick it or adapt it.
+            # plot_choropleth_map expects (gdf, df_data_full...)
+            # We should probably inline the plotting or adapt map_viz.
+            # Let's allow plot_choropleth_map to accept the PRE-AGGREGATED dataframe.
+            
+            # HACK: Pass df_map_data as df_data, but it already has 'small_area' and 'Benefit_Value'.
+            # The plotter expects '2050' column. Let's rename.
+            df_map_data = df_map_data.rename(columns={'Benefit_Value': '2050'})
+            # Also add 'co-benefit_type' col if needed by filter logic in plotter
+            df_map_data['co-benefit_type'] = map_benefit
+            
+            fig_map = plot_choropleth_map(gdf_uk, df_map_data, map_benefit)
             st.plotly_chart(fig_map, use_container_width=True)
+            
         with col_map_2:
-            st.info("Interactive Map Loaded from Shapefile.")
-            st.write("This map visualizes the spatial distribution of benefits across the available regions.")
+            st.info("Interactive Map.")
+            st.write("Using optimized GeoJSON + DuckDB.")
     else:
         st.error("Shapefile could not be loaded.")

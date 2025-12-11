@@ -2,99 +2,131 @@ import pandas as pd
 import streamlit as st
 import os
 import glob
+import duckdb
 
-LEVEL_3_EXCEL = "Level_3.xlsx"
-LEVEL_3_PARQUET = "Level_3.parquet"
 DATA_CHUNKS_DIR = "data_chunks"
 LOOKUP_FILE = "lookups.xlsx"
+PARQUET_PATTERN = f"{DATA_CHUNKS_DIR}/level_3_part_*.parquet"
 
 @st.cache_data
-def load_raw_data():
+def load_lookups():
     """
-    Loads the dataset (checking chunks first, then parquet, then excel) and Lookups.
-    Returns:
-        df_data: The main data (wide format).
-        df_lookup: The lookup table (small_area -> local_authority).
+    Loads ONLY the lookup table (Small, safe for memory).
     """
-    # 1. Load Main Data
-    df = pd.DataFrame()
-    try:
-        # Check for Chunks (Priority for Cloud Deployment)
-        chunk_files = glob.glob(f"{DATA_CHUNKS_DIR}/level_3_part_*.parquet")
-        if chunk_files:
-            dfs = [pd.read_parquet(f) for f in chunk_files]
-            df = pd.concat(dfs, ignore_index=True)
-            # print("Loaded from Parquet Chunks")
-        elif os.path.exists(LEVEL_3_PARQUET):
-            df = pd.read_parquet(LEVEL_3_PARQUET)
-            # print("Loaded from Single Parquet")
-        else:
-            df = pd.read_excel(LEVEL_3_EXCEL)
-            # print("Loaded from Excel")
-            
-    except Exception as e:
-        st.error(f"Error loading main data: {e}")
-        return pd.DataFrame(), pd.DataFrame()
-
-    # 2. Load Lookup Data
     try:
         if os.path.exists(LOOKUP_FILE):
-             # Read columns: small_area, local_authority
              df_lookup = pd.read_excel(LOOKUP_FILE, usecols=['small_area', 'local_authority'])
-             # Drop duplicates just in case
              df_lookup = df_lookup.drop_duplicates(subset=['small_area'])
-        else:
-             df_lookup = pd.DataFrame(columns=['small_area', 'local_authority'])
+             return df_lookup
     except Exception as e:
-        df_lookup = pd.DataFrame(columns=['small_area', 'local_authority'])
-        # Not critical, we can survive without names
+        st.error(f"Error loading lookups: {e}")
+    return pd.DataFrame(columns=['small_area', 'local_authority'])
 
-    return df, df_lookup
-
-def get_area_options(df_lookup, df_data):
+def get_area_options(df_lookup):
     """
     Returns a dict mapping {Display Name -> small_area code}.
+    Uses the lookup dataframe.
     """
-    # Get all unique areas from data
-    unique_codes = sorted(df_data['small_area'].dropna().unique().tolist())
-    
     if df_lookup.empty:
-        # Fallback to codes only
-        return {code: code for code in unique_codes}
+        return {}
     
-    # Merge to get names
     # Create a map code -> name
     code_to_name = pd.Series(df_lookup.local_authority.values, index=df_lookup.small_area).to_dict()
     
+    # We need a list of ALL valid area codes.
+    # To avoid scanning the big file, we assume the lookup covers most.
+    # OR we can do a distinct query on parquet if needed, but lookups is faster.
+    
     options = {}
-    for code in unique_codes:
-        name = code_to_name.get(code, "Unknown")
-        display = f"{name} ({code})" if name != "Unknown" else code
+    # Sort by name
+    sorted_items = sorted(code_to_name.items(), key=lambda x: str(x[1]))
+    
+    for code, name in sorted_items:
+        display = f"{name} ({code})"
         options[display] = code
         
     return options
 
-def get_unique_benefits(df):
-    if 'co-benefit_type' in df.columns:
-        return sorted(df['co-benefit_type'].dropna().unique().tolist())
-    return []
+def get_area_data(area_code):
+    """
+    Fetches rows for a specific area using DuckDB (Low Memory).
+    """
+    query = f"SELECT * FROM '{PARQUET_PATTERN}' WHERE small_area = ?"
+    try:
+        # Use duckdb to query parquet directly without loading into pandas first
+        df = duckdb.execute(query, [area_code]).fetchdf()
+        return df
+    except Exception as e:
+        st.error(f"Error reading data for {area_code}: {e}")
+        return pd.DataFrame()
 
-def process_area_data(df, area):
+def get_unique_benefits(sample_df=None):
     """
-    Filters for a specific area first, THEN melts.
+    Returns unique co-benefit types.
+    Optimization: Hardcode or query once.
     """
-    # 1. Filter
-    df_area = df[df['small_area'] == area].copy()
+    # Hardcoded or efficient query
+    # return ["Health", "Job Creation", "Economic", "Social"] # Example
+    # Let's query distinct
+    query = f"SELECT DISTINCT \"co-benefit_type\" FROM '{PARQUET_PATTERN}'"
+    try:
+        df = duckdb.execute(query).fetchdf()
+        return sorted(df['co-benefit_type'].tolist())
+    except:
+        return []
+
+def get_top_areas_data(benefit_type=None, year=2050):
+    """
+    Get top 10 areas for a specific benefit/year.
+    """
+    col_name = str(year)
     
-    # 2. Year Cols
+    if benefit_type:
+        query = f"""
+            SELECT small_area, "{year}" as Benefit_Value
+            FROM '{PARQUET_PATTERN}'
+            WHERE "co-benefit_type" = ?
+            ORDER BY "{year}" DESC
+            LIMIT 10
+        """
+        params = [benefit_type]
+    else:
+        # Aggregate ALL benefits
+        query = f"""
+            SELECT small_area, SUM("{year}") as Benefit_Value
+            FROM '{PARQUET_PATTERN}'
+            GROUP BY small_area
+            ORDER BY Benefit_Value DESC
+            LIMIT 10
+        """
+        params = []
+        
+    try:
+        df = duckdb.execute(query, params).fetchdf()
+        # Add 'co-benefit_type' col for consistency in plotting if needed
+        # df['co-benefit_type'] = benefit_type if benefit_type else "Total"
+        return df
+    except Exception as e:
+        st.error(f"Error fetching top areas: {e}")
+        return pd.DataFrame()
+
+def process_area_data_from_df(df_area):
+    """
+    Melts the single-area dataframe.
+    """
+    if df_area.empty:
+        return pd.DataFrame()
+
+    # Smart Melt
+    # identify numeric columns that look like years
+    cols = df_area.columns
     year_cols = []
-    for col in df_area.columns:
-        if isinstance(col, int) and 2025 <= col <= 2050:
-            year_cols.append(col)
-        elif str(col).isdigit() and 2025 <= int(col) <= 2050:
-            year_cols.append(col)
-            
-    id_vars = [col for col in df_area.columns if col not in year_cols]
+    for col in cols:
+        # Check if column name is exactly a year string or int
+        if str(col).isdigit() and 2025 <= int(col) <= 2050:
+             year_cols.append(col)
+             
+    id_vars = [c for c in cols if c not in year_cols]
     
     df_melted = df_area.melt(
         id_vars=id_vars,
@@ -104,5 +136,4 @@ def process_area_data(df, area):
     )
     
     df_melted['Year'] = df_melted['Year'].astype(int)
-    
     return df_melted
