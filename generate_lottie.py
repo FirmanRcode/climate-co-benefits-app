@@ -1,0 +1,89 @@
+import json
+import os
+
+# Minimal Lottie JSON: A green circle pulsing
+# This avoids network dependency completely.
+lottie_data = {
+  "v": "5.5.7",
+  "fr": 60,
+  "ip": 0,
+  "op": 60,
+  "w": 100,
+  "h": 100,
+  "nm": "Pulse",
+  "ddd": 0,
+  "assets": [],
+  "layers": [
+    {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 4,
+      "nm": "Circle",
+      "sr": 1,
+      "ks": {
+        "o": { "a": 1, "k": [ { "i": { "x": [0.833], "y": [0.833] }, "o": { "x": [0.167], "y": [0.167] }, "t": 0, "s": [100] }, { "t": 30, "s": [50] }, { "t": 60, "s": [100] } ], "ix": 11 },
+        "r": { "a": 0, "k": 0, "ix": 10 },
+        "p": { "a": 0, "k": [50, 50, 0], "ix": 2 },
+        "a": { "a": 0, "k": [0, 0, 0], "ix": 1 },
+        "s": { "a": 1, "k": [ { "i": { "x": [0.667, 0.667, 0.667], "y": [1, 1, 1] }, "o": { "x": [0.333, 0.333, 0.333], "y": [0, 0, 0] }, "t": 0, "s": [100, 100, 100] }, { "t": 30, "s": [120, 120, 100] }, { "t": 60, "s": [100, 100, 100] } ], "ix": 6 }
+      },
+      "ao": 0,
+      "shapes": [
+        {
+          "ty": "gr",
+          "it": [
+            {
+              "ty": "el",
+              "p": { "a": 0, "k": [0, 0], "ix": 2 },
+              "s": { "a": 0, "k": [40, 40], "ix": 2 },
+              "nm": "Ellipse Path 1",
+              "mn": "ADBE Vector Shape - Ellipse",
+              "hd": False
+            },
+            {
+              "ty": "fl",
+              "c": { "a": 0, "k": [0, 0.67, 0.71, 1], "ix": 4 }, # Color #00ADB5
+              "o": { "a": 0, "k": 100, "ix": 5 },
+              "r": 1,
+              "bm": 0,
+              "nm": "Fill 1",
+              "mn": "ADBE Vector Graphic - Fill",
+              "hd": False
+            },
+            {
+              "ty": "tr",
+              "p": { "a": 0, "k": [0, 0], "ix": 2 },
+              "a": { "a": 0, "k": [0, 0], "ix": 1 },
+              "s": { "a": 0, "k": [100, 100], "ix": 3 },
+              "r": { "a": 0, "k": 0, "ix": 6 },
+              "o": { "a": 0, "k": 100, "ix": 7 },
+              "sk": { "a": 0, "k": 0, "ix": 4 },
+              "sa": { "a": 0, "k": 0, "ix": 5 },
+              "nm": "Transform"
+            }
+          ],
+          "nm": "Ellipse",
+          "np": 3,
+          "cix": 2,
+          "bm": 0,
+          "ix": 1,
+          "mn": "ADBE Vector Group",
+          "hd": False
+        }
+      ],
+      "ip": 0,
+      "op": 60,
+      "st": 0,
+      "bm": 0
+    }
+  ],
+  "markers": []
+}
+
+if not os.path.exists("assets"):
+    os.makedirs("assets")
+
+with open("assets/lottie_nature.json", "w") as f:
+    json.dump(lottie_data, f)
+
+print("Generated assets/lottie_nature.json")
