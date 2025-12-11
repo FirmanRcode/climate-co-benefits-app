@@ -197,6 +197,14 @@ with tab1:
     else:
         df_top10 = get_top_areas_data(comparison_type, 2050)
         
+    # Map Codes to Names for clearer display
+    if not df_lookup.empty:
+         # Create a map code -> name
+        code_to_name = pd.Series(df_lookup.local_authority.values, index=df_lookup.small_area).to_dict()
+        df_top10['Display_Name'] = df_top10['small_area'].map(code_to_name).fillna(df_top10['small_area'])
+    else:
+        df_top10['Display_Name'] = df_top10['small_area']
+
     # NOTE: plot_top_areas_comparison expects df_wide format. 
     # But now we are passing a pre-aggregated DF with columns [small_area, Benefit_Value].
     # We need to adapt the function calls or the function itself.
@@ -205,13 +213,14 @@ with tab1:
     import plotly.express as px
     fig3 = px.bar(
         df_top10.sort_values('Benefit_Value', ascending=True),
-        y='small_area',
+        y='Display_Name',
         x='Benefit_Value',
         orientation='h',
         title=f"Top 10 Areas ({'Total' if comparison_type=='Total' else comparison_type}) in 2050",
         template='plotly_dark',
         color='Benefit_Value',
-        color_continuous_scale='Viridis'
+        color_continuous_scale='Viridis',
+        hover_data=['small_area']
     )
     fig3.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter"))
     
