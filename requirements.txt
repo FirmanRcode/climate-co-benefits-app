@@ -4,6 +4,4 @@ plotly
 openpyxl
 pyarrow
 geopandas
-matplotlib
-shapely
 duckdb
