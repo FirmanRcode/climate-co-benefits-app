@@ -63,38 +63,55 @@ st.markdown("""
 with st.spinner("Initializing..."):
     df_lookup = load_lookups()
 
+# --- IMPORTS FOR MOTION VIZ ---
+from streamlit_lottie import st_lottie
+import requests
+
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+# Load Lottie Animation
+lottie_url = "https://assets5.lottiefiles.com/packages/lf20_sufg7a.json" # Nature Theme
+lottie_json = load_lottieurl(lottie_url)
+
 # --- SIDEBAR ---
-st.sidebar.image("https://thedatalab.com/wp-content/uploads/2023/06/The-Data-Lab-Logo-White.png", width=200)
-st.sidebar.title("🌍 Settings")
+with st.sidebar:
+    if lottie_json:
+        st_lottie(lottie_json, height=150, key="sidebar_anim")
+    st.image("https://thedatalab.com/wp-content/uploads/2023/06/The-Data-Lab-Logo-White.png", width=200)
+    st.title("🌍 Settings")
 
-# Get Options
-area_options_map = get_area_options(df_lookup)
+    # Get Options
+    area_options_map = get_area_options(df_lookup)
 
-if not area_options_map:
-    st.error("No area options found. Check 'lookups.xlsx'.")
-    st.stop()
+    if not area_options_map:
+        st.error("No area options found. Check 'lookups.xlsx'.")
+        st.stop()
 
-area_display_names = list(area_options_map.keys())
+    area_display_names = list(area_options_map.keys())
 
-# Default Selection
-default_index = 0
-for idx, name in enumerate(area_display_names):
-    if "Glasgow" in name:
-        default_index = idx
-        break
+    # Default Selection
+    default_index = 0
+    for idx, name in enumerate(area_display_names):
+        if "Glasgow" in name:
+            default_index = idx
+            break
 
-selected_display_name = st.sidebar.selectbox("Select Municipality/Area", area_display_names, index=default_index)
-selected_area_code = area_options_map[selected_display_name]
+    selected_display_name = st.selectbox("Select Municipality/Area", area_display_names, index=default_index)
+    selected_area_code = area_options_map[selected_display_name]
 
-if "E0" in selected_display_name:
-    st.sidebar.caption(f"Area Code: {selected_area_code}")
+    if "E0" in selected_display_name:
+        st.caption(f"Area Code: {selected_area_code}")
 
-st.sidebar.divider()
-st.sidebar.markdown("""
-**About this Dashboard:**
-This tool empowers local councils to visualize the **co-benefits** of climate action. 
-By investing in climate initiatives, you aren't just saving the planet—you are improving **health**, **economy**, and **society**.
-""")
+    st.divider()
+    st.markdown("""
+    **About this Dashboard:**
+    This tool empowers local councils to visualize the **co-benefits** of climate action. 
+    By investing in climate initiatives, you aren't just saving the planet—you are improving **health**, **economy**, and **society**.
+    """)
 
 # --- MAIN PAGE ---
 
@@ -245,7 +262,7 @@ with tab2:
     st.plotly_chart(fig_heat, use_container_width=True)
 
 with tab3:
-    st.header("🗺️ Geographic Distribution")
+    st.header("🗺️ Geographic Distribution (Timeline)")
     
     # Load Shapefile (GeoJSON) - Cached
     with st.spinner("Loading Map..."):
@@ -254,39 +271,37 @@ with tab3:
     if not gdf_uk.empty:
         col_map_1, col_map_2 = st.columns([3, 1])
         with col_map_1:
-            # Map needs specific aggregation across ALL areas.
-            # This is currently heavy with DuckDB (aggregating all rows).
-            # We can use a simplified query "SELECT small_area, SUM(\"2050\") ..."
-            # But wait, Map needs DataFrame to merge.
-            # Let's query Aggregated Data for 2050.
             
-            map_benefit = st.selectbox("Select Benefit to Map (2050):", ["Total"] + benefits_list)
+            # --- MAP CONTROLS ---
+            map_year = st.slider("Select Year", min_value=2025, max_value=2050, value=2050, step=1)
+            map_benefit = st.selectbox("Select Benefit to Map:", ["Total"] + benefits_list)
             
             # Fetch Map Data on fly
             if map_benefit == "Total":
-                query_map = "SELECT small_area, SUM(\"2050\") as Benefit_Value FROM 'data_chunks/level_3_part_*.parquet' GROUP BY small_area"
+                query_map = f"SELECT small_area, SUM(\"{map_year}\") as Benefit_Value FROM 'data_chunks/level_3_part_*.parquet' GROUP BY small_area"
             else:
-                 query_map = f"SELECT small_area, \"2050\" as Benefit_Value FROM 'data_chunks/level_3_part_*.parquet' WHERE \"co-benefit_type\" = '{map_benefit}'"
+                 query_map = f"SELECT small_area, \"{map_year}\" as Benefit_Value FROM 'data_chunks/level_3_part_*.parquet' WHERE \"co-benefit_type\" = '{map_benefit}'"
             
             import duckdb
             df_map_data = duckdb.execute(query_map).fetchdf()
             
-            # Use the existing plotter but we need to trick it or adapt it.
-            # plot_choropleth_map expects (gdf, df_data_full...)
-            # We should probably inline the plotting or adapt map_viz.
-            # Let's allow plot_choropleth_map to accept the PRE-AGGREGATED dataframe.
+            # Use the existing plotter. df_map_data has 'Benefit_Value'.
+            # Add 'co-benefit_type' col if needed by filter logic in plotter, 
+            # OR modify plotter to accept simpler data. (Already modified plotter).
             
-            # HACK: Pass df_map_data as df_data, but it already has 'small_area' and 'Benefit_Value'.
-            # The plotter expects '2050' column. Let's rename.
-            df_map_data = df_map_data.rename(columns={'Benefit_Value': '2050'})
-            # Also add 'co-benefit_type' col if needed by filter logic in plotter
-            df_map_data['co-benefit_type'] = map_benefit
+            # Add dummy year column if plotter strictly requires it, but we modified plotter to handle 'Benefit_Value' direct.
+            # Passing 2050 as benefit value name
             
-            fig_map = plot_choropleth_map(gdf_uk, df_map_data, map_benefit)
+            fig_map = plot_choropleth_map(gdf_uk, df_map_data.copy(), map_benefit)
+            # Update title dynamically for the year
+            fig_map.update_layout(title=f"Geographic Distribution of Benefits ({map_benefit}, {map_year})")
+            
             st.plotly_chart(fig_map, use_container_width=True)
             
         with col_map_2:
             st.info("Interactive Map.")
+            st.markdown(f"**Year:** {map_year}")
+            st.markdown(f"**Metric:** {map_benefit}")
             st.write("Using optimized GeoJSON + DuckDB.")
     else:
         st.error("Shapefile could not be loaded.")

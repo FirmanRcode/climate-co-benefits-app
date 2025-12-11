@@ -5,3 +5,5 @@ openpyxl
 pyarrow
 geopandas
 duckdb
+streamlit-lottie
+requests
