@@ -169,16 +169,17 @@ def format_currency(val):
     else:
         return f"£{val:,.4f}"
 
-    # --- COUNT-UP VISUALIZATION ---
-    # (CSS Animation Strategy)
+# --- COUNT-UP VISUALIZATION ---
+# (CSS Animation Strategy)
 
-    metric_html_1 = f"""
-    <div class="metric-card" style="animation: fadeIn 1.5s;">
-        <div class="metric-label">Total Projected Benefits ({metric_year})</div>
-        <div class="metric-value" style="color: #00ADB5;">{format_currency(total_benefit_year)}</div>
-    </div>
-    """
-    
+metric_html_1 = f"""
+<div class="metric-card" style="animation: fadeIn 1.5s;">
+    <div class="metric-label">Total Projected Benefits ({metric_year})</div>
+    <div class="metric-value" style="color: #00ADB5;">{format_currency(total_benefit_year)}</div>
+</div>
+"""
+
+with col1:
     st.markdown(metric_html_1, unsafe_allow_html=True)
 
 with col2:
