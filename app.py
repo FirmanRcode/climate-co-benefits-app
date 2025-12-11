@@ -65,17 +65,18 @@ with st.spinner("Initializing..."):
 
 # --- IMPORTS FOR MOTION VIZ ---
 from streamlit_lottie import st_lottie
-import requests
+import json
 
-def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
+def load_lottiefile(filepath: str):
+    with open(filepath, "r") as f:
+        return json.load(f)
 
-# Load Lottie Animation
-lottie_url = "https://assets5.lottiefiles.com/packages/lf20_sufg7a.json" # Nature Theme
-lottie_json = load_lottieurl(lottie_url)
+# Load Lottie Animation (Local)
+lottie_json = None
+try:
+    lottie_json = load_lottiefile("assets/lottie_nature.json")
+except Exception as e:
+    print(f"Lottie not found: {e}")
 
 # --- SIDEBAR ---
 with st.sidebar:
