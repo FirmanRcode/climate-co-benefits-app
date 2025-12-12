@@ -1,9 +1,11 @@
 import requests
-import json
-import os
-
 # Reliable "Growing Plant" Lottie URL
-LOTTIE_URL = "https://assets5.lottiefiles.com/packages/lf20_zprb9voq.json"
+LOTTIE_URL = "https://lottie.host/5739c9df-2c49-4786-8158-dcfb0149022d/9F6a16629K.json" # Trying the original host link again with headers or a different one
+
+# Headers to mimic a browser
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
 
 save_path = "assets/lottie_nature.json"
 
@@ -12,7 +14,7 @@ os.makedirs("assets", exist_ok=True)
 
 print(f"Downloading Lottie animation from {LOTTIE_URL}...")
 try:
-    response = requests.get(LOTTIE_URL, timeout=10)
+    response = requests.get(LOTTIE_URL, headers=HEADERS, timeout=10)
     if response.status_code == 200:
         with open(save_path, "wb") as f:
             f.write(response.content)
