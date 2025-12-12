@@ -2,9 +2,26 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
-PINK = "#FF2E63"
-CYAN = "#08D9D6"
-DARK_BG = "#222831"
+# Centralized Icon Mapping for consistent visuals
+BENEFIT_ICONS = {
+    "air_quality": "💨",
+    "congestion": "🚦",
+    "dampness": "💧",
+    "diet_change": "🥗",
+    "excess_cold": "❄️",
+    "excess_heat": "☀️",
+    "hassle_costs": "⏳",
+    "noise": "📢",
+    "physical_activity": "🏃",
+    "road_repairs": "🚧",
+    "road_safety": "🚸"
+}
+
+def get_icon_label(raw_name):
+    """Helper to convert 'air_quality' -> '💨 Air Quality'"""
+    pure_name = raw_name.replace('_', ' ').title()
+    icon = BENEFIT_ICONS.get(raw_name, "✨")
+    return f"{icon} {pure_name}"
 
 def plot_projected_benefits_timeline(df_melted, area):
     """
@@ -14,21 +31,24 @@ def plot_projected_benefits_timeline(df_melted, area):
     if df_melted.empty:
         return go.Figure()
 
-    grouped = df_melted.groupby(['Year', 'co-benefit_type'])['Benefit_Value'].sum().reset_index()
+    df = df_melted.copy()
+    df['Label'] = df['co-benefit_type'].apply(get_icon_label)
+
+    grouped = df.groupby(['Year', 'Label'])['Benefit_Value'].sum().reset_index()
     
     fig = px.area(
         grouped, 
         x='Year', 
         y='Benefit_Value', 
-        color='co-benefit_type',
-        title=f"Projected Benefits Growth (2025-2050)",
+        color='Label',
+        title=f"📈 Projected Benefits Trajectory ({area})",
         template='plotly_dark'
     )
     
     fig.update_layout(
         xaxis_title="Year",
         yaxis_title="Benefit Value (£)",
-        legend_title="Co-Benefit Type",
+        legend_title="Benefit Type",
         font=dict(family="Inter, sans-serif"),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)"
@@ -41,20 +61,22 @@ def plot_benefit_breakdown_2050(df_melted, area):
     Bar chart showing the breakdown of benefits in 2050.
     """
     # Filter for 2050
-    data_2050 = df_melted[df_melted['Year'] == 2050]
+    data_2050 = df_melted[df_melted['Year'] == 2050].copy()
     
     if data_2050.empty:
         return go.Figure()
 
-    grouped = data_2050.groupby('co-benefit_type')['Benefit_Value'].sum().reset_index()
+    data_2050['Label'] = data_2050['co-benefit_type'].apply(get_icon_label)
+
+    grouped = data_2050.groupby('Label')['Benefit_Value'].sum().reset_index()
     grouped = grouped.sort_values('Benefit_Value', ascending=True) # For H bar
     
     fig = px.bar(
         grouped,
-        y='co-benefit_type',
+        y='Label',
         x='Benefit_Value',
         orientation='h',
-        title=f"Co-Benefits Composition in 2050",
+        title=f"🧩 Co-Benefits Composition in 2050",
         color='Benefit_Value',
         color_continuous_scale=px.colors.sequential.Teal,
         template='plotly_dark'
@@ -75,9 +97,6 @@ def plot_top_areas_comparison(df_wide, benefit_type=None):
     Compares top 10 areas for total benefits (accumulated or 2050).
     df_wide: The raw wide dataframe (not melted).
     """
-    # Use the helper function effectively here or just do logic
-    # We need to process the wide dataframe.
-    
     target_year = 2050
     col_name = target_year
     if col_name not in df_wide.columns:
@@ -88,8 +107,11 @@ def plot_top_areas_comparison(df_wide, benefit_type=None):
         
     df_year = df_wide[['small_area', 'co-benefit_type', col_name]].copy()
     
+    title = f"Top 10 Areas Comparison ({target_year})"
     if benefit_type:
         df_year = df_year[df_year['co-benefit_type'] == benefit_type]
+        icon_label = get_icon_label(benefit_type)
+        title = f"🏆 Top 10 Areas for {icon_label}"
     
     grouped = df_year.groupby('small_area')[col_name].sum().reset_index()
     grouped.rename(columns={col_name: 'Benefit_Value'}, inplace=True)
@@ -99,18 +121,18 @@ def plot_top_areas_comparison(df_wide, benefit_type=None):
     
     fig = px.bar(
         top_10,
-        y='small_area',
         x='Benefit_Value',
+        y='small_area',
         orientation='h',
-        title=f"Top 10 Areas ({'Total' if not benefit_type else benefit_type}) in {target_year}",
+        title=title,
+        template='plotly_dark',
         color='Benefit_Value',
-        color_continuous_scale=px.colors.sequential.Viridis,
-        template='plotly_dark'
+        color_continuous_scale=px.colors.sequential.Bluyl
     )
     
     fig.update_layout(
-        xaxis_title="Value",
-        yaxis_title="",
+        xaxis_title="Total Benefit Value",
+        yaxis_title="Area",
         font=dict(family="Inter, sans-serif"),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)"
@@ -120,41 +142,9 @@ def plot_top_areas_comparison(df_wide, benefit_type=None):
 
 def plot_time_lapse(df_melted, area):
     """
-    Animated Bar Chart showing how benefits change over time.
+    Mock Time-Lapse (Placeholder) 
     """
-    if df_melted.empty:
-        return go.Figure()
-        
-    # We want to see how the 'co-benefit_type' ranking changes over years
-    # Group by Year and Type
-    grouped = df_melted.groupby(['Year', 'co-benefit_type'])['Benefit_Value'].sum().reset_index()
-    
-    # Sort for better animation stability
-    grouped = grouped.sort_values(['Year', 'Benefit_Value'], ascending=[True, True])
-    
-    fig = px.bar(
-        grouped,
-        x="Benefit_Value",
-        y="co-benefit_type",
-        animation_frame="Year",
-        orientation='h',
-        range_x=[0, grouped['Benefit_Value'].max() * 1.1], # Fix x-axis range
-        title=f"Evolution of Co-Benefits (2025-2050)",
-        color="co-benefit_type",
-        template='plotly_dark'
-    )
-    
-    fig.update_layout(
-        font=dict(family="Inter, sans-serif"),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        updatemenus=[dict(type='buttons', showactive=False,
-            buttons=[dict(label='Play',
-                          method='animate',
-                          args=[None, dict(frame=dict(duration=500, redraw=True), fromcurrent=True)])])]
-    )
-    
-    return fig
+    return go.Figure()
 
 def plot_heatmap_year_benefit(df_melted):
     """
@@ -163,14 +153,17 @@ def plot_heatmap_year_benefit(df_melted):
     if df_melted.empty:
         return go.Figure()
         
-    grouped = df_melted.groupby(['Year', 'co-benefit_type'])['Benefit_Value'].sum().reset_index()
+    df = df_melted.copy()
+    df['Label'] = df['co-benefit_type'].apply(get_icon_label)
+    
+    grouped = df.groupby(['Year', 'Label'])['Benefit_Value'].sum().reset_index()
     
     fig = px.density_heatmap(
         grouped,
         x="Year",
-        y="co-benefit_type",
+        y="Label",
         z="Benefit_Value",
-        title="Heatmap: Intensity of Benefits over Time",
+        title="🔥 Heatmap: Intensity of Benefits over Time",
         color_continuous_scale="Viridis",
         template='plotly_dark'
     )
@@ -194,12 +187,11 @@ def plot_motion_bubble_chart(df_melted, area):
         return go.Figure()
         
     df = df_melted.copy()
-    df.sort_values(['co-benefit_type', 'Year'], inplace=True)
+    df['Label'] = df['co-benefit_type'].apply(get_icon_label)
+    df.sort_values(['Label', 'Year'], inplace=True)
     
     # Calculate Growth (Absolute Change)
-    df['Growth'] = df.groupby('co-benefit_type')['Benefit_Value'].diff().fillna(0)
-    
-    # Filter out 2025 (start year has 0 growth usually) to avoid confusion, or keep it.
+    df['Growth'] = df.groupby('Label')['Benefit_Value'].diff().fillna(0)
     
     # FIX: Plotly size cannot be negative.
     df['Size'] = df['Benefit_Value'].clip(lower=0)
@@ -209,16 +201,16 @@ def plot_motion_bubble_chart(df_melted, area):
         x="Benefit_Value",
         y="Growth",
         animation_frame="Year",
-        animation_group="co-benefit_type",
+        animation_group="Label",
         size="Size", # Use value clipped to 0
-        color="co-benefit_type",
-        hover_name="co-benefit_type",
+        color="Label",
+        hover_name="Label",
         hover_data={"Size": False, "Benefit_Value": ":.4f", "Growth": ":.4f"},
-        title=f"Dynamics: Value vs. Growth Speed ({area})",
+        title=f"🫧 Dynamics: Value vs. Growth ({area})",
         template='plotly_dark',
         size_max=55,
-        range_x=[df['Benefit_Value'].min() * 1.1, df['Benefit_Value'].max() * 1.1],
-        range_y=[df['Growth'].min() * 1.1, df['Growth'].max() * 1.1]
+        range_x=[df['Benefit_Value'].min(), df['Benefit_Value'].max() * 1.1],
+        range_y=[df['Growth'].min(), df['Growth'].max() * 1.1]
     )
     
     fig.update_layout(
@@ -228,13 +220,11 @@ def plot_motion_bubble_chart(df_melted, area):
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
          updatemenus=[dict(type='buttons', showactive=False,
-            buttons=[dict(label='Play',
+            buttons=[dict(label='▶️ Play',
                           method='animate',
                           args=[None, dict(frame=dict(duration=500, redraw=True), fromcurrent=True)])])]
     )
     
-    return fig
-
     return fig
 
 def plot_benefit_rose_chart(df, area_name, year=None):
@@ -245,19 +235,17 @@ def plot_benefit_rose_chart(df, area_name, year=None):
     """
     # Filter POSITIVE values only
     df_clean = df[df['Benefit_Value'] > 0].copy()
-    
-    # Clean Labels
-    df_clean['Display_Label'] = df_clean['co-benefit_type'].str.replace('_', ' ').str.title()
+    df_clean['Display_Label'] = df_clean['co-benefit_type'].apply(get_icon_label)
     
     if year:
         # Static Mode
         df_plot = df_clean[df_clean['Year'] == year]
-        title_text = f"The 'Flower' of Benefits in {year}"
+        title_text = f"🌹 The 'Flower' of Benefits in {year}"
         anim_args = {}
     else:
         # Animation Mode
         df_plot = df_clean.sort_values("Year")
-        title_text = f"The Blooming Benefits (2025-2050)"
+        title_text = f"🌹 The Blooming Benefits (2025-2050)"
         anim_args = {
             "animation_frame": "Year",
             "range_r": [0, df_clean['Benefit_Value'].max() * 1.1] # Fix scale so it grows
@@ -292,7 +280,7 @@ def plot_benefit_rose_chart(df, area_name, year=None):
         font=dict(family="Inter"),
         polar=dict(
             radialaxis=dict(visible=True, showticklabels=False),
-            angularaxis=dict(tickfont=dict(size=12, color="#EEE"))
+            angularaxis=dict(tickfont=dict(size=14, color="#EEE"))
         ),
         margin=dict(l=40, r=40, t=50, b=40),
         updatemenus=updatemenus
@@ -310,9 +298,9 @@ def plot_benefit_sankey(df, area_name, year=2050):
         return go.Figure()
 
     categories = {
-        'Health': ['physical_activity', 'diet_change', 'dampness', 'excess_cold', 'excess_heat'],
-        'Infrastructure': ['congestion', 'road_safety', 'road_repairs', 'hassle_costs'],
-        'Environment': ['air_quality', 'noise']
+        '🏥 Health': ['physical_activity', 'diet_change', 'dampness', 'excess_cold', 'excess_heat'],
+        '🏗️ Infra': ['congestion', 'road_safety', 'road_repairs', 'hassle_costs'],
+        '🌳 Env': ['air_quality', 'noise']
     }
     
     benefit_to_cat = {}
@@ -322,7 +310,10 @@ def plot_benefit_sankey(df, area_name, year=2050):
             
     cat_list = list(categories.keys())
     benefit_list = df_year['co-benefit_type'].unique().tolist()
-    all_labels = cat_list + benefit_list
+    
+    # Map benefit list to Icon Labels
+    benefit_labels_map = {b: get_icon_label(b) for b in benefit_list}
+    all_labels = cat_list + [benefit_labels_map[b] for b in benefit_list]
     label_to_idx = {lbl: i for i, lbl in enumerate(all_labels)}
     
     sources = []
@@ -332,9 +323,9 @@ def plot_benefit_sankey(df, area_name, year=2050):
     
     # HIGH CONTRAST NEON PALETTE
     cat_colors = {
-        'Health': '#FF0055',       # Neon Red/Pink
-        'Infrastructure': '#00F0FF', # Cyan/Electric Blue
-        'Environment': '#CCFF00'     # Lime Green
+        '🏥 Health': '#FF0055',       # Neon Red/Pink
+        '🏗️ Infra': '#00F0FF', # Cyan/Electric Blue
+        '🌳 Env': '#CCFF00'     # Lime Green
     }
 
     def hex_to_rgba(hex_code, opacity=0.8): # Increased opacity for visibility
@@ -349,10 +340,11 @@ def plot_benefit_sankey(df, area_name, year=2050):
         benefit = row['co-benefit_type']
         val = row['Benefit_Value']
         cat = benefit_to_cat.get(benefit, 'Other')
+        benefit_lbl = benefit_labels_map[benefit]
         
         if val > 0:
             sources.append(label_to_idx[cat])
-            targets.append(label_to_idx[benefit])
+            targets.append(label_to_idx[benefit_lbl])
             values.append(val)
             base_color = cat_colors.get(cat, '#FFFFFF')
             colors.append(hex_to_rgba(base_color, 0.6)) # Link opacity
@@ -365,15 +357,19 @@ def plot_benefit_sankey(df, area_name, year=2050):
             node_colors.append(cat_colors[lbl])
         else:
             # It's a benefit node, find its category
-            parent_cat = benefit_to_cat.get(lbl, 'Other')
-            node_colors.append(cat_colors.get(parent_cat, '#888'))
+            found_cat = "Other"
+            for b_code, b_lbl in benefit_labels_map.items():
+                if b_lbl == lbl:
+                    found_cat = benefit_to_cat.get(b_code, "Other")
+                    break
+            node_colors.append(cat_colors.get(found_cat, '#888'))
 
     fig = go.Figure(data=[go.Sankey(
         node = dict(
           pad = 20,
           thickness = 25,
           line = dict(color = "white", width = 1), # White outline for pop
-          label = [l.replace('_',' ').title() for l in all_labels],
+          label = all_labels,
           color = node_colors # Explicit colorful nodes
         ),
         link = dict(
@@ -384,7 +380,7 @@ def plot_benefit_sankey(df, area_name, year=2050):
         ))])
 
     fig.update_layout(
-        title_text=f"Value Flow Analysis ({year})", 
+        title_text=f"🌊 Value Flow Analysis ({year})", 
         font=dict(family="Inter", size=14, color="white"), # Bigger white text
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
