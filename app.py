@@ -91,7 +91,7 @@ except Exception as e:
 with st.sidebar:
     if lottie_json:
         st_lottie(lottie_json, height=150, key="sidebar_anim")
-    st.image("https://thedatalab.com/wp-content/uploads/2023/06/The-Data-Lab-Logo-White.png", width=200)
+    
     st.title("🌍 Settings")
 
     # Get Options
