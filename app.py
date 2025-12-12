@@ -257,6 +257,24 @@ st.markdown("---")
 tab1, tab2, tab3 = st.tabs(["📊 Overview", "🎬 Time-Lapse", "🗺️ Map"])
 
 with tab1:
+    # --- INTERACTIVE BENEFIT EXPLORER ---
+    st.subheader("💡 Interactive Benefit Explorer")
+    st.write("Hover over the icons to see the 'Pulse' of each benefit category.")
+    
+    # Reuse the same grid HTML logic but larger
+    main_grid_html = "<div style='display:flex; flex-wrap:wrap; justify-content:center; gap:20px; padding: 10px;'>"
+    for key, info in benefit_icons.items():
+         # Modified css for main page (larger icons)
+         main_grid_html += f"""
+         <div class='icon-box' style='width: 80px;' title='{info['label']}'>
+            <div class='icon-emoji {info['anim']}' style='font-size: 40px;'>{info['icon']}</div>
+            <div class='icon-label' style='font-size: 10px; margin-top:5px;'>{info['label']}</div>
+         </div>
+         """
+    main_grid_html += "</div>"
+    st.markdown(main_grid_html, unsafe_allow_html=True)
+    st.markdown("---")
+
     # Row 1: Timeline & Breakdown
     row1_col1, row1_col2 = st.columns([2, 1])
 
