@@ -1,6 +1,10 @@
 import requests
-# Reliable "Growing Plant" Lottie URL
-LOTTIE_URL = "https://lottie.host/5739c9df-2c49-4786-8158-dcfb0149022d/9F6a16629K.json" # Trying the original host link again with headers or a different one
+import json
+import os
+
+# Reliable "Money/Plant Growth" Lottie URL
+# This is a high quality 'Investment Growth' animation similar to the request
+LOTTIE_URL = "https://assets10.lottiefiles.com/packages/lf20_tijmpkyq.json" 
 
 # Headers to mimic a browser
 HEADERS = {
