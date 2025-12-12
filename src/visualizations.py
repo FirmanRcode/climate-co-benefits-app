@@ -177,24 +177,36 @@ def plot_heatmap_year_benefit(df_melted):
 
 def plot_motion_bubble_chart(df_melted, area):
     """
-    Gapminder-style Bubble Chart:
+    Gapminder-style Bubble Chart -> NOW UPGRADED TO EMOJI RACE 🏎️💨
+    Instead of bubbles, the EMOJIS themselves move and race!
     X = Total Benefit Value
     Y = Growth (Year-over-Year Change)
-    Size = Total Benefit Value
-    Animation = Year
+    Text = Emoji Icon
     """
     if df_melted.empty:
         return go.Figure()
         
     df = df_melted.copy()
+    
+    # Pre-calculate mapping
+    df['Icon'] = df['co-benefit_type'].map(BENEFIT_ICONS).fillna("✨")
     df['Label'] = df['co-benefit_type'].apply(get_icon_label)
+    
     df.sort_values(['Label', 'Year'], inplace=True)
     
     # Calculate Growth (Absolute Change)
     df['Growth'] = df.groupby('Label')['Benefit_Value'].diff().fillna(0)
     
-    # FIX: Plotly size cannot be negative.
-    df['Size'] = df['Benefit_Value'].clip(lower=0)
+    # Use text size mapping instead of circle size
+    # We want larger value = larger emoji
+    # Normalize size between 20px and 60px
+    min_val = df['Benefit_Value'].min()
+    max_val = df['Benefit_Value'].max()
+    # Avoid division by zero
+    if max_val == min_val: max_val += 1
+    
+    # Simple linear scaling for font size
+    df['FontSize'] = 20 + ((df['Benefit_Value'] - min_val) / (max_val - min_val)) * 40
     
     fig = px.scatter(
         df,
@@ -202,27 +214,28 @@ def plot_motion_bubble_chart(df_melted, area):
         y="Growth",
         animation_frame="Year",
         animation_group="Label",
-        size="Size", # Use value clipped to 0
-        color="Label",
+        text="Icon", # RENDER EMOJI AS MARKER
         hover_name="Label",
-        hover_data={"Size": False, "Benefit_Value": ":.4f", "Growth": ":.4f"},
-        title=f"🫧 Dynamics: Value vs. Growth ({area})",
+        hover_data={"Benefit_Value": ":.4f", "Growth": ":.4f", "Icon": False, "FontSize": False},
+        title=f"🏎️ The Co-Benefit Race: Value vs. Speed ({area})",
         template='plotly_dark',
-        size_max=55,
-        range_x=[df['Benefit_Value'].min(), df['Benefit_Value'].max() * 1.1],
-        range_y=[df['Growth'].min(), df['Growth'].max() * 1.1]
+        range_x=[df['Benefit_Value'].min(), df['Benefit_Value'].max() * 1.15], # Extra room for emojis
+        range_y=[df['Growth'].min(), df['Growth'].max() * 1.25]
     )
+    
+    # Update traces to show TEXT only (Emoji) not dots
+    fig.update_traces(mode='text', textfont_size=df['FontSize'])
     
     fig.update_layout(
         xaxis_title="Total Value (£)",
-        yaxis_title="Yearly Growth (£)",
+        yaxis_title="Yearly Growth Speed (£)",
         font=dict(family="Inter, sans-serif"),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
          updatemenus=[dict(type='buttons', showactive=False,
-            buttons=[dict(label='▶️ Play',
+            buttons=[dict(label='▶️ Start Race',
                           method='animate',
-                          args=[None, dict(frame=dict(duration=500, redraw=True), fromcurrent=True)])])]
+                          args=[None, dict(frame=dict(duration=600, redraw=True), fromcurrent=True)])])]
     )
     
     return fig
