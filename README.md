@@ -2,6 +2,8 @@
 
 ![Status](https://img.shields.io/badge/Status-Active-success) ![Python](https://img.shields.io/badge/Python-3.9%2B-blue) ![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-ff4b4b)
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://climate-co-benefits-app.streamlit.app/)
+
 > **"Unveiling the monetary value of climate action beyond just carbon reduction."**
 
 This interactive dashboard visualizes the **co-benefits** of climate policies (such as improved air quality, health, and infrastructure) across various municipalities in the UK (Glasgow, etc.). It uses advanced data storytelling techniques to make complex economic data accessible and engaging.
