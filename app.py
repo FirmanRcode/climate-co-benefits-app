@@ -261,16 +261,11 @@ with tab1:
     st.subheader("💡 Interactive Benefit Explorer")
     st.write("Hover over the icons to see the 'Pulse' of each benefit category.")
     
-    # Reuse the same grid HTML logic but larger
+    # Reuse the same grid HTML logic but larger (Flattened to avoid Raw HTML bug)
     main_grid_html = "<div style='display:flex; flex-wrap:wrap; justify-content:center; gap:20px; padding: 10px;'>"
     for key, info in benefit_icons.items():
-         # Modified css for main page (larger icons)
-         main_grid_html += f"""
-         <div class='icon-box' style='width: 80px;' title='{info['label']}'>
-            <div class='icon-emoji {info['anim']}' style='font-size: 40px;'>{info['icon']}</div>
-            <div class='icon-label' style='font-size: 10px; margin-top:5px;'>{info['label']}</div>
-         </div>
-         """
+         # Modified css for main page (larger icons) and formatted as single line
+         main_grid_html += f"<div class='icon-box' style='width: 80px;' title='{info['label']}'><div class='icon-emoji {info['anim']}' style='font-size: 40px;'>{info['icon']}</div><div class='icon-label' style='font-size: 10px; margin-top:5px;'>{info['label']}</div></div>"
     main_grid_html += "</div>"
     st.markdown(main_grid_html, unsafe_allow_html=True)
     st.markdown("---")
