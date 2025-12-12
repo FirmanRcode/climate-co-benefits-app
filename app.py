@@ -216,9 +216,18 @@ with tab1:
         st.plotly_chart(fig1, use_container_width=True)
 
     with row1_col2:
-        st.subheader("🧩 Benefit Composition (2050)")
-        fig2 = plot_benefit_breakdown_2050(area_df_melted, display_pure_name)
-        st.plotly_chart(fig2, use_container_width=True)
+        # st.subheader("🧩 Benefit Composition (2050)")
+        # fig2 = plot_benefit_breakdown_2050(area_df_melted, display_pure_name)
+        # st.plotly_chart(fig2, use_container_width=True)
+        
+        # UPGRADE: Using Rose Chart instead of Pie for "Juara" effect
+        st.subheader(f"🌹 Benefit Flower ({metric_year})")
+        # Use simple error handling just in case
+        try:
+             fig_rose = plot_benefit_rose_chart(area_df_melted, display_pure_name, year=metric_year)
+             st.plotly_chart(fig_rose, use_container_width=True)
+        except Exception as e:
+             st.error(f"Could not render rose chart: {e}")
 
     st.markdown("---")
 
