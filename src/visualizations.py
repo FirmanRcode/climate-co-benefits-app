@@ -234,3 +234,119 @@ def plot_motion_bubble_chart(df_melted, area):
     )
     
     return fig
+
+def plot_benefit_rose_chart(df, area_name, year=2050):
+    """
+    Plots a Nightingale Rose Chart (Polar Bar) for the given year.
+    Visualizes the 11 benefit types as petals.
+    """
+    # Filter for specific year
+    df_year = df[df['Year'] == year].copy()
+    
+    # Clean up names for display (e.g. 'air_quality' -> 'Air Quality')
+    df_year['Display_Label'] = df_year['co-benefit_type'].str.replace('_', ' ').str.title()
+    
+    # Sort by value for organized petals
+    df_year = df_year.sort_values('Benefit_Value', ascending=False)
+    
+    fig = px.bar_polar(
+        df_year,
+        r="Benefit_Value",
+        theta="Display_Label",
+        color="Benefit_Value",
+        template="plotly_dark",
+        color_continuous_scale="Viridis", # Consistent theme
+        title=f"The 'Flower' of Benefits in {year}",
+        hover_data={"Display_Label": True, "Benefit_Value": ":.4f"} # Format hover
+    )
+    
+    fig.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter"),
+        polar=dict(
+            radialaxis=dict(visible=True, showticklabels=False), # Hide radial numbers for cleaner look
+            angularaxis=dict(tickfont=dict(size=12, color="#EEE"))
+        ),
+        margin=dict(l=40, r=40, t=50, b=40)
+    )
+    
+    return fig
+
+def plot_benefit_sankey(df, area_name, year=2050):
+    """
+    Sankey Diagram showing flow from Categories (Health, Env, Infra) -> Benefit Types -> Total Value.
+    """
+    df_year = df[df['Year'] == year].copy()
+    
+    if df_year.empty:
+        return go.Figure()
+
+    # Define Categories (Manual Mapping based on user request context)
+    categories = {
+        'Health': ['physical_activity', 'diet_change', 'dampness', 'excess_cold', 'excess_heat'],
+        'Infrastructure': ['congestion', 'road_safety', 'road_repairs', 'hassle_costs'],
+        'Environment': ['air_quality', 'noise']
+    }
+    
+    # Invert mapping: Benefit -> Category
+    benefit_to_cat = {}
+    for cat, benefits in categories.items():
+        for b in benefits:
+            benefit_to_cat[b] = cat
+            
+    # Nodes: 3 Categories + 11 Benefits = 14 Nodes. 
+    # Actually simpler: Category -> Benefit. 
+    # Or Category -> Total? 
+    # Let's do: Category -> Benefit (Left to Right).
+    
+    # Prepare Labels
+    cat_list = list(categories.keys())
+    benefit_list = df_year['co-benefit_type'].unique().tolist()
+    
+    all_labels = cat_list + benefit_list
+    label_to_idx = {lbl: i for i, lbl in enumerate(all_labels)}
+    
+    # Prepare Links
+    sources = []
+    targets = []
+    values = []
+    colors = []
+    
+    # Color Palette mapped to Category
+    cat_colors = {'Health': '#FF2E63', 'Infrastructure': '#08D9D6', 'Environment': '#252A34'}
+
+    for _, row in df_year.iterrows():
+        benefit = row['co-benefit_type']
+        val = row['Benefit_Value']
+        cat = benefit_to_cat.get(benefit, 'Other') # Fallback
+        
+        if val > 0:
+            sources.append(label_to_idx[cat])
+            targets.append(label_to_idx[benefit])
+            values.append(val)
+            colors.append(cat_colors.get(cat, '#888'))
+            
+    fig = go.Figure(data=[go.Sankey(
+        node = dict(
+          pad = 15,
+          thickness = 20,
+          line = dict(color = "black", width = 0.5),
+          label = [l.replace('_',' ').title() for l in all_labels],
+          color = "blue" # Default node color, can be customized
+        ),
+        link = dict(
+          source = sources,
+          target = targets,
+          value = values,
+          color = [c.replace('#', 'rgba(') + ', 0.5)' if c.startswith('#') else c for c in colors] # Semi-transparent links
+        ))])
+
+    fig.update_layout(
+        title_text=f"Value Flow Analysis ({year})", 
+        font=dict(family="Inter"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        template='plotly_dark'
+    )
+    return fig

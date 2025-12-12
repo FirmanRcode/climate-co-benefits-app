@@ -14,7 +14,9 @@ from src.visualizations import (
     plot_top_areas_comparison,
     plot_time_lapse,
     plot_heatmap_year_benefit,
-    plot_motion_bubble_chart
+    plot_motion_bubble_chart,
+    plot_benefit_rose_chart,
+    plot_benefit_sankey
 )
 from src.map_viz import load_shapefile, plot_choropleth_map
 
@@ -229,6 +231,17 @@ with tab1:
         except Exception as e:
              st.error(f"Could not render rose chart: {e}")
 
+    st.markdown("---")
+    
+    # SANKEY DIAGRAM (Value Flow)
+    st.subheader(f"🌊 Value Flow Analysis ({metric_year})")
+    st.write("Trace where the economic value originates (Health vs Infrastructure vs Environment).")
+    try:
+        fig_sankey = plot_benefit_sankey(area_df_melted, display_pure_name, year=metric_year)
+        st.plotly_chart(fig_sankey, use_container_width=True)
+    except Exception as e:
+        st.error(f"Could not render Sankey: {e}")
+        
     st.markdown("---")
 
     # Row 2: Comparison
