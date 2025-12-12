@@ -199,8 +199,18 @@ total_benefit_year = data_year['Benefit_Value'].sum()
 sorted_benefits = data_year.sort_values('Benefit_Value', ascending=False)
 if not sorted_benefits.empty:
     top_benefit_row = sorted_benefits.iloc[0]
-    top_benefit_type = top_benefit_row['co-benefit_type']
+    raw_type = top_benefit_row['co-benefit_type']
     top_benefit_val = top_benefit_row['Benefit_Value']
+    
+    # Format Label with Emoji using the same dictionary logic
+    icons = {
+        "air_quality": "💨", "congestion": "🚦", "dampness": "💧", "diet_change": "🥗",
+        "excess_cold": "❄️", "excess_heat": "☀️", "hassle_costs": "⏳", "noise": "📢",
+        "physical_activity": "🏃", "road_repairs": "🚧", "road_safety": "🚸"
+    }
+    icon = icons.get(raw_type, "✨")
+    clean_name = raw_type.replace('_', ' ').title()
+    top_benefit_type = f"{icon} {clean_name}"
 else:
     top_benefit_type = "N/A"
     top_benefit_val = 0
