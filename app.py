@@ -158,15 +158,11 @@ with st.sidebar:
     
     st.sidebar.markdown("### 🎯 Benefit Focus")
     
-    # Create 3-column Grid in HTML string
-    grid_html = "<div style='display:flex; flex-wrap:wrap; justify-content:center;'>"
+    # Create 3-column Grid in HTML string (One-liner to avoid Indentation/Code Block issues)
+    grid_html = "<div style='display:flex; flex-wrap:wrap; justify-content:center; gap:10px;'>"
     for key, info in benefit_icons.items():
-        grid_html += f"""
-        <div class="icon-box" title="{info['label']}">
-            <div class="icon-emoji {info['anim']}">{info['icon']}</div>
-            <div class="icon-label">{info['label']}</div>
-        </div>
-        """
+        # Using simple concatenation to ensure no newlines/tabs break the markdown rendering
+        grid_html += f"<div class='icon-box' title='{info['label']}'><div class='icon-emoji {info['anim']}'>{info['icon']}</div><div class='icon-label'>{info['label']}</div></div>"
     grid_html += "</div>"
     
     st.sidebar.markdown(grid_html, unsafe_allow_html=True)
