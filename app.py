@@ -115,12 +115,64 @@ with st.sidebar:
     if "E0" in selected_display_name:
         st.caption(f"Area Code: {selected_area_code}")
 
-    st.divider()
+    # --- ICON GRID ANIMATIONS ---
     st.markdown("""
-    **About this Dashboard:**
-    This tool empowers local councils to visualize the **co-benefits** of climate action. 
-    By investing in climate initiatives, you aren't just saving the planet—you are improving **health**, **economy**, and **society**.
-    """)
+    <style>
+    @keyframes floating { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
+    @keyframes pulsing { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    @keyframes shaking { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); } }
+    
+    .icon-box {
+        display: inline-block;
+        margin: 5px;
+        text-align: center;
+        width: 60px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .icon-box:hover { transform: scale(1.3) !important; }
+    .icon-emoji { font-size: 24px; }
+    .icon-label { font-size: 8px; color: #BBB; margin-top: 2px; }
+    
+    .anim-float { animation: floating 3s infinite ease-in-out; }
+    .anim-pulse { animation: pulsing 2s infinite ease-in-out; }
+    .anim-shake { animation: shaking 0.5s infinite linear; } /* For Noise/Congestion */
+    .anim-slow-shake { animation: shaking 3s infinite ease-in-out; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Benefit Mappings
+    benefit_icons = {
+        "air_quality": {"icon": "💨", "anim": "anim-float", "label": "Air Quality"},
+        "congestion": {"icon": "🚦", "anim": "anim-slow-shake", "label": "Congestion"},
+        "dampness": {"icon": "💧", "anim": "anim-float", "label": "Dampness"},
+        "diet_change": {"icon": "🥗", "anim": "anim-pulse", "label": "Diet"},
+        "excess_cold": {"icon": "❄️", "anim": "anim-float", "label": "Cold"},
+        "excess_heat": {"icon": "☀️", "anim": "anim-pulse", "label": "Heat"},
+        "hassle_costs": {"icon": "⏳", "anim": "anim-slow-shake", "label": "Hassle"},
+        "noise": {"icon": "📢", "anim": "anim-shake", "label": "Noise"},
+        "physical_activity": {"icon": "🏃", "anim": "anim-pulse", "label": "Activity"},
+        "road_repairs": {"icon": "🚧", "anim": "anim-float", "label": "Repairs"},
+        "road_safety": {"icon": "🚸", "anim": "anim-pulse", "label": "Safety"}
+    }
+    
+    st.sidebar.markdown("### 🎯 Benefit Focus")
+    
+    # Create 3-column Grid in HTML string
+    grid_html = "<div style='display:flex; flex-wrap:wrap; justify-content:center;'>"
+    for key, info in benefit_icons.items():
+        grid_html += f"""
+        <div class="icon-box" title="{info['label']}">
+            <div class="icon-emoji {info['anim']}">{info['icon']}</div>
+            <div class="icon-label">{info['label']}</div>
+        </div>
+        """
+    grid_html += "</div>"
+    
+    st.sidebar.markdown(grid_html, unsafe_allow_html=True)
+    st.sidebar.caption("Hover for details!")
+
+    st.divider()
 
 # --- MAIN PAGE ---
 
