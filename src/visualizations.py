@@ -240,8 +240,9 @@ def plot_benefit_rose_chart(df, area_name, year=2050):
     Plots a Nightingale Rose Chart (Polar Bar) for the given year.
     Visualizes the 11 benefit types as petals.
     """
-    # Filter for specific year
+    # Filter for specific year and POSITIVE values only (Flower can't bloom with negative petals)
     df_year = df[df['Year'] == year].copy()
+    df_year = df_year[df_year['Benefit_Value'] > 0] 
     
     # Clean up names for display (e.g. 'air_quality' -> 'Air Quality')
     df_year['Display_Label'] = df_year['co-benefit_type'].str.replace('_', ' ').str.title()
@@ -295,10 +296,7 @@ def plot_benefit_sankey(df, area_name, year=2050):
         for b in benefits:
             benefit_to_cat[b] = cat
             
-    # Nodes: 3 Categories + 11 Benefits = 14 Nodes. 
-    # Actually simpler: Category -> Benefit. 
-    # Or Category -> Total? 
-    # Let's do: Category -> Benefit (Left to Right).
+    # Nodes: Category -> Benefit (Left to Right).
     
     # Prepare Labels
     cat_list = list(categories.keys())
@@ -316,6 +314,14 @@ def plot_benefit_sankey(df, area_name, year=2050):
     # Color Palette mapped to Category
     cat_colors = {'Health': '#FF2E63', 'Infrastructure': '#08D9D6', 'Environment': '#252A34'}
 
+    def hex_to_rgba(hex_code, opacity=0.5):
+        h = hex_code.lstrip('#')
+        try:
+            rgb = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+            return f"rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, {opacity})"
+        except:
+             return f"rgba(100, 100, 100, {opacity})"
+
     for _, row in df_year.iterrows():
         benefit = row['co-benefit_type']
         val = row['Benefit_Value']
@@ -325,7 +331,9 @@ def plot_benefit_sankey(df, area_name, year=2050):
             sources.append(label_to_idx[cat])
             targets.append(label_to_idx[benefit])
             values.append(val)
-            colors.append(cat_colors.get(cat, '#888'))
+            # FIX: Correctly convert Hex to RGBA string
+            base_color = cat_colors.get(cat, '#888888')
+            colors.append(hex_to_rgba(base_color, 0.5))
             
     fig = go.Figure(data=[go.Sankey(
         node = dict(
@@ -339,7 +347,7 @@ def plot_benefit_sankey(df, area_name, year=2050):
           source = sources,
           target = targets,
           value = values,
-          color = [c.replace('#', 'rgba(') + ', 0.5)' if c.startswith('#') else c for c in colors] # Semi-transparent links
+          color = colors # Correct RGBA strings
         ))])
 
     fig.update_layout(
