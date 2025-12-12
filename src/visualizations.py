@@ -142,9 +142,60 @@ def plot_top_areas_comparison(df_wide, benefit_type=None):
 
 def plot_time_lapse(df_melted, area):
     """
-    Mock Time-Lapse (Placeholder) 
+    Bar Chart Race: Animated ranking of benefits over time.
     """
-    return go.Figure()
+    if df_melted.empty:
+        return go.Figure()
+
+    df = df_melted.copy()
+    
+    # 1. Add Icons to Labels
+    df['Label'] = df['co-benefit_type'].apply(get_icon_label)
+    
+    # 2. Sort Data Correctly for Bar Race (Year asc, Value asc for H-Bar)
+    # We want top item at top of chart, so usually Value ascending for Y-axis H-bar
+    df = df.sort_values(['Year', 'Benefit_Value'], ascending=[True, True])
+    
+    # 3. Create Basic Bar Frame
+    # To stabilize animation, we ensure range_x covers max value
+    max_val = df['Benefit_Value'].max()
+    
+    fig = px.bar(
+        df, 
+        x='Benefit_Value', 
+        y='Label', 
+        orientation='h',
+        animation_frame='Year', 
+        hover_name='Label',
+        text='Benefit_Value', # Show value on bar
+        title=f"⏳ Evolution of Benefits Ranking ({area})",
+        template='plotly_dark',
+        color='Label', # Distinct colors
+        range_x=[0, max_val * 1.1] # Fixed X-axis for smooth animation
+    )
+    
+    # 4. Polish Appearance
+    fig.update_traces(
+        texttemplate='%{text:.4f}', 
+        textposition='outside',
+        marker_line_width=0
+    )
+    
+    fig.update_layout(
+        xaxis_title="Benefit Value (£)",
+        yaxis_title="",
+        showlegend=False, # Labels are on Axis
+        updatemenus=[dict(type='buttons', showactive=False,
+            buttons=[dict(label='▶️ Play Race',
+                          method='animate',
+                          args=[None, dict(frame=dict(duration=600, redraw=True), fromcurrent=True)])])],
+        font=dict(family="Inter, sans-serif"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=50, b=0)
+    )
+    
+    return fig
 
 def plot_heatmap_year_benefit(df_melted):
     """
