@@ -223,10 +223,14 @@ with tab1:
         # st.plotly_chart(fig2, use_container_width=True)
         
         # UPGRADE: Using Rose Chart instead of Pie for "Juara" effect
-        st.subheader(f"🌹 Benefit Flower ({metric_year})")
-        # Use simple error handling just in case
+        st.subheader(f"🌹 Benefit Flower")
+        
+        # User control: Static (Specific Year) or Animation (Bloom)?
+        rose_mode = st.toggle("🌺 Animate Bloom (2025-2050)", value=False)
+        
         try:
-             fig_rose = plot_benefit_rose_chart(area_df_melted, display_pure_name, year=metric_year)
+             year_arg = None if rose_mode else metric_year
+             fig_rose = plot_benefit_rose_chart(area_df_melted, display_pure_name, year=year_arg)
              st.plotly_chart(fig_rose, use_container_width=True)
         except Exception as e:
              st.error(f"Could not render rose chart: {e}")
