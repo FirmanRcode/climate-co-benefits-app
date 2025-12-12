@@ -194,9 +194,14 @@ if area_df_melted.empty:
 
 # Total Benefit (Dynamic Year)
 data_year = area_df_melted[area_df_melted['Year'] == metric_year]
-total_benefit_year = data_year['Benefit_Value'].sum()
 
-sorted_benefits = data_year.sort_values('Benefit_Value', ascending=False)
+# --- METRIC CALCULATION FIX ---
+# Sum up values by Type to handle potential duplicates/segments, matching Chart logic
+grouped_metrics = data_year.groupby('co-benefit_type')['Benefit_Value'].sum().reset_index()
+
+total_benefit_year = grouped_metrics['Benefit_Value'].sum()
+
+sorted_benefits = grouped_metrics.sort_values('Benefit_Value', ascending=False)
 if not sorted_benefits.empty:
     top_benefit_row = sorted_benefits.iloc[0]
     raw_type = top_benefit_row['co-benefit_type']
